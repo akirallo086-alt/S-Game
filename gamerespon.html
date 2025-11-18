@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Memory Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* --- ANIMATION KEYFRAMES (No Change) --- */
+        
+        @keyframes color-shift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes float-bg {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+            100% { transform: translateY(0); }
+        }
+        @keyframes pulse-card {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes float-food {
+            0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+            5% { opacity: 1; }
+            95% { opacity: 1; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+
+        /* --- GLOBAL STYLES & ANIMATION APPLICATION (No Change) --- */
+        body {
+            background: linear-gradient(-45deg, #FF6F61, #FFD166, #06D6A0, #118AB2, #6A0DAD);
+            background-size: 400% 400%; 
+            animation: color-shift 25s ease infinite;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem; /* Reduced padding for small screens */
+            font-family: sans-serif;
+            color: white;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .animated-bg {
+            animation: float-bg 6s ease-in-out infinite;
+            z-index: 10;
+        }
+        
+        .floating-food {
+            position: absolute;
+            top: -10vh;
+            font-size: 2rem;
+            opacity: 0;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .card-back {
+            animation: pulse-card 3s ease-in-out infinite;
+        }
+        
+        .card-container.flipped .card-back,
+        .card-container.matched .card-back {
+            animation: none; 
+        }
+
+        /* --- GRID AND CARD STYLES (Responsive Adjustments) --- */
+        .card-grid {
+            /* Default: 4x4 (Medium) */
+            grid-template-columns: repeat(4, 1fr);
+            grid-gap: 0.75rem; 
+        }
+        
+        /* Small Screens: Adjust default card font size */
+        .card-face {
+            font-size: 2rem; /* Reduced from 2.5rem for better fit on small cards */
+        }
+        
+        /* Easy Mode (3x4) */
+        .card-grid.easy {
+            grid-template-columns: repeat(3, 1fr);
+            max-width: 300px; /* Adjusted max-width for 3-column layout */
+        }
+        
+        /* Hard Mode (6x6) */
+        .card-grid.hard {
+            grid-template-columns: repeat(6, 1fr);
+            grid-gap: 0.35rem; /* Reduced gap for 6-column layout */
+        }
+
+        /* Responsive font size for Hard mode */
+        .card-grid.hard .card-face {
+            font-size: 1.25rem; /* Much smaller font for 6x6 grid */
+        }
+
+        /* Card flip styles (No Change) */
+        .card-container {
+            perspective: 1000px;
+            cursor: pointer;
+            height: 100%;
+            padding-top: 100%;
+            position: relative;
+        }
+        .card {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card-container.flipped .card {
+            transform: rotateY(180deg);
+        }
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: inherit;
+        }
+        .card-front {
+            background-color: #3f3f46; 
+            color: white;
+            transform: rotateY(180deg);
+        }
+        .card-back {
+            background-color: #fca5a5; 
+            color: #ef4444; 
+            font-size: 1.5rem;
+        }
+        .card-container.matched .card-front {
+            background-color: #4ade80; 
+            color: #166534; 
+        }
+        .game-over-modal {
+            transition: opacity 0.3s ease-in-out;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body class="text-white">
+
+    <div id="game-container" class="w-full max-w-lg mx-auto bg-gray-800 p-4 sm:p-6 rounded-xl shadow-2xl animated-bg"> 
+
+        <header class="text-center mb-4 sm:mb-6">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-pink-400">Simple Memory Game</h1>
+            <div class="flex flex-col sm:flex-row justify-between items-center mt-4 text-lg sm:text-xl font-medium">
+                
+                <div class="mb-4 sm:mb-0 text-base sm:text-xl">
+                    <label for="difficulty" class="text-gray-400 mr-2 block sm:inline">Difficulty:</label>
+                    <select id="difficulty" class="bg-gray-700 text-yellow-300 p-1 sm:p-2 rounded-lg border border-gray-600 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="easy">Easy (6 Pairs, 3x4)</option>
+                        <option value="medium" selected>Medium (8 Pairs, 4x4)</option>
+                        <option value="hard">Hard (18 Pairs, 6x6)</option>
+                    </select>
+                </div>
+                
+                <div class="flex space-x-4 sm:space-x-6 text-base sm:text-xl">
+                    <p>Moves: <span id="moves-count" class="text-yellow-300 font-bold">0</span></p>
+                    <p>Time: <span id="time-display" class="text-yellow-300 font-bold">0:00</span></p>
+                </div>
+            </div>
+        </header>
+
+        <main id="card-grid" class="card-grid grid mx-auto"></main>
+
+        <div class="mt-4 sm:mt-6 text-center">
+            <button id="restart-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 sm:py-3 sm:px-6 rounded-lg transition duration-200 transform hover:scale-[1.03] shadow-lg shadow-indigo-500/50 text-base sm:text-lg">
+                Restart Game
+            </button>
+        </div>
+
+    </div>
+
+    <div id="game-over-modal" class="game-over-modal fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center hidden opacity-0 p-4">
+        <div class="bg-white text-gray-900 p-6 sm:p-8 rounded-xl shadow-2xl text-center max-w-xs sm:max-w-sm w-full transform transition duration-300 scale-95" id="modal-content">
+            <h2 class="text-2xl sm:text-3xl font-bold mb-4 text-green-600">Congratulations!</h2>
+            <p class="text-base sm:text-lg mb-2">You completed the game in:</p>
+            <p class="text-3xl sm:text-4xl font-extrabold text-indigo-600 mb-4" id="final-time"></p>
+            <p class="text-base sm:text-lg mb-6">With <span class="font-bold text-yellow-600" id="final-moves"></span> moves!</p>
+            <button id="modal-restart-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 shadow-md text-base sm:text-lg">
+                Play Again
+            </button>
+        </div>
+    </div>
+
+<script>
+    // Game Configuration and State
+    const allIcons = [
+        '🍕', '🍔', '🍟', '🍣', '🍦', '🍩', '🍪', '☕️', 
+        '🍎', '🍇', '🍉', '🍓', 
+        '⚽️', '🏀', '🏈', '⚾️', '🎾', '🏐', '🏉', '🎱', '🏓', '🏸' 
+    ];
+    
+    const floatingFoodIcons = [
+        '🌟', '💖', '✨', '🎈', '🍰', '🍿', '🍬', '🌮', '🌶️', '🍻'
+    ];
+
+
+    const difficultyLevels = {
+        easy: { pairs: 6, maxIcons: allIcons.slice(0, 6) }, 
+        medium: { pairs: 8, maxIcons: allIcons.slice(0, 8) }, 
+        hard: { pairs: 18, maxIcons: allIcons.slice(0, 18) } 
+    };
+
+    const cardGrid = document.getElementById('card-grid');
+    const movesCountDisplay = document.getElementById('moves-count');
+    const timeDisplay = document.getElementById('time-display');
+    const gameOverModal = document.getElementById('game-over-modal');
+    const modalContent = document.getElementById('modal-content');
+    const finalTimeDisplay = document.getElementById('final-time');
+    const finalMovesDisplay = document.getElementById('final-moves');
+    const difficultySelector = document.getElementById('difficulty');
+    const gameContainer = document.getElementById('game-container'); 
+
+    let deck = [];
+    let flippedCards = [];
+    let matchesFound = 0;
+    let moves = 0;
+    let gameTimer;
+    let seconds = 0;
+    let isProcessing = false;
+    let currentDifficulty = 'medium'; 
+
+    // --- Floating Food Logic (No Change) ---
+    const createFloatingFood = () => {
+        const food = document.createElement('div');
+        food.classList.add('floating-food');
+        
+        const icon = floatingFoodIcons[Math.floor(Math.random() * floatingFoodIcons.length)];
+        food.textContent = icon;
+
+        const startX = Math.random() * 100;
+        food.style.left = `${startX}vw`;
+
+        const duration = Math.random() * 15 + 10;
+        food.style.animationDuration = `${duration}s`;
+
+        const delay = Math.random() * -duration;
+        food.style.animationDelay = `${delay}s`;
+
+        food.style.animationName = 'float-food';
+        food.style.animationTimingFunction = 'linear';
+        food.style.animationIterationCount = 'infinite';
+        
+        document.body.appendChild(food);
+
+        food.addEventListener('animationiteration', () => {
+            food.remove(); 
+        });
+    };
+
+    const startFoodGeneration = () => {
+        // Create 20-30 elements initially to fill the screen
+        for (let i = 0; i < 30; i++) {
+            createFloatingFood();
+        }
+        // This will continuously ensure 10 elements are floating
+        setInterval(createFloatingFood, 1000); 
+    };
+    // --- End Floating Food Logic ---
+
+
+    // Utility function to shuffle an array (Fisher-Yates) (No Change)
+    const shuffle = (array) => {
+        let currentIndex = array.length, randomIndex;
+        while (currentIndex !== 0) {
+            randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+            [array[currentIndex], array[randomIndex]] = [
+                array[randomIndex], array[currentIndex]
+            ];
+        }
+        return array;
+    };
+
+    // --- Timer Functions (No Change) ---
+    const formatTime = (totalSeconds) => {
+        const min = Math.floor(totalSeconds / 60);
+        const sec = totalSeconds % 60;
+        return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+    };
+
+    const startTimer = () => {
+        if (gameTimer) return;
+        gameTimer = setInterval(() => {
+            seconds++;
+            timeDisplay.textContent = formatTime(seconds);
+        }, 1000);
+    };
+
+    const stopTimer = () => {
+        clearInterval(gameTimer);
+        gameTimer = null;
+    };
+
+    // --- Game Logic (No Change) ---
+
+    const updateMoves = () => {
+        moves++;
+        movesCountDisplay.textContent = moves;
+    };
+
+    const checkMatch = () => {
+        const [card1, card2] = flippedCards;
+
+        if (card1.dataset.icon === card2.dataset.icon) {
+            card1.classList.add('matched');
+            card2.classList.add('matched');
+
+            card1.removeEventListener('click', handleCardClick);
+            card2.removeEventListener('click', handleCardClick);
+
+            matchesFound++;
+
+            if (matchesFound === difficultyLevels[currentDifficulty].pairs) {
+                gameOver();
+            }
+
+            flippedCards = [];
+            isProcessing = false;
+
+        } else {
+            setTimeout(() => {
+                card1.classList.remove('flipped');
+                card2.classList.remove('flipped');
+                flippedCards = [];
+                isProcessing = false;
+            }, 1000);
+        }
+    };
+
+    const handleCardClick = (event) => {
+        const cardContainer = event.currentTarget;
+
+        if (moves === 0) {
+            startTimer();
+        }
+
+        if (isProcessing || cardContainer.classList.contains('flipped') || cardContainer.classList.contains('matched')) {
+            return;
+        }
+
+        cardContainer.classList.add('flipped');
+        flippedCards.push(cardContainer);
+
+        if (flippedCards.length === 2) {
+            updateMoves();
+            isProcessing = true;
+            checkMatch();
+        }
+    };
+
+    const createCard = (icon) => {
+        const container = document.createElement('div');
+        container.classList.add('card-container');
+        container.dataset.icon = icon;
+        container.addEventListener('click', handleCardClick);
+
+        const card = document.createElement('div');
+        card.classList.add('card');
+
+        // Card Back
+        const back = document.createElement('div');
+        back.classList.add('card-face', 'card-back');
+        back.textContent = '?';
+
+        // Card Front
+        const front = document.createElement('div');
+        front.classList.add('card-face', 'card-front');
+        front.textContent = icon;
+
+        card.appendChild(back);
+        card.appendChild(front);
+        container.appendChild(card);
+
+        return container;
+    };
+
+    // --- Responsive Deck Initialization Logic ---
+    const initializeDeck = (difficultyKey) => {
+        currentDifficulty = difficultyKey;
+        const level = difficultyLevels[currentDifficulty];
+        const icons = level.maxIcons;
+        
+        // 1. Prepare Deck
+        deck = [...icons, ...icons];
+        shuffle(deck);
+
+        // 2. Clear Grid and Apply Grid Style
+        cardGrid.innerHTML = '';
+        cardGrid.classList.remove('easy', 'medium', 'hard');
+        cardGrid.classList.add(currentDifficulty);
+        
+        // **RESPONSIVE IMPROVEMENT:** Adjust the container max width for the hardest level
+        if (currentDifficulty === 'hard') {
+             // Use a larger max width for 6x6 on larger screens, but keep it responsive
+             gameContainer.classList.remove('max-w-lg');
+             // Tailwind default 'lg' breakpoint is 1024px, 'xl' is 1280px. max-w-4xl is better for large grids.
+             gameContainer.classList.add('max-w-4xl'); 
+             // Also ensure it takes full width up to this limit
+             gameContainer.style.maxWidth = 'calc(100vw - 1rem)'; // ensure it fits the viewport
+        } else {
+             gameContainer.classList.remove('max-w-4xl');
+             gameContainer.classList.add('max-w-lg');
+             gameContainer.style.maxWidth = ''; // Clear custom style
+        }
+
+
+        // 3. Create Cards
+        deck.forEach(icon => {
+            cardGrid.appendChild(createCard(icon));
+        });
+    };
+
+    const gameOver = () => {
+        stopTimer();
+
+        finalTimeDisplay.textContent = formatTime(seconds);
+        finalMovesDisplay.textContent = moves;
+
+        setTimeout(() => {
+            gameOverModal.classList.remove('hidden');
+            gameOverModal.offsetHeight; 
+            gameOverModal.classList.add('opacity-100');
+            modalContent.classList.remove('scale-95');
+            modalContent.classList.add('scale-100');
+        }, 500);
+    };
+
+    const resetGame = (newDifficulty = currentDifficulty) => {
+        stopTimer();
+        seconds = 0;
+        moves = 0;
+        matchesFound = 0;
+        flippedCards = [];
+        isProcessing = false;
+
+        movesCountDisplay.textContent = '0';
+        timeDisplay.textContent = '0:00';
+
+        // Hide modal
+        gameOverModal.classList.add('opacity-0');
+        modalContent.classList.remove('scale-100');
+        modalContent.classList.add('scale-95');
+
+        setTimeout(() => {
+            gameOverModal.classList.add('hidden');
+        }, 300);
+
+        initializeDeck(newDifficulty);
+    };
+
+    // --- Event Listeners ---
+    document.getElementById('restart-btn').addEventListener('click', () => {
+        resetGame(difficultySelector.value); 
+    });
+    document.getElementById('modal-restart-btn').addEventListener('click', () => {
+        resetGame(difficultySelector.value); 
+    });
+
+    // New listener for difficulty change
+    difficultySelector.addEventListener('change', (event) => {
+        resetGame(event.target.value);
+    });
+
+    // Initialize the game when the window loads
+    window.onload = () => {
+        resetGame(difficultySelector.value);
+        startFoodGeneration();
+    };
+
+</script>
+</body>
+</html>
