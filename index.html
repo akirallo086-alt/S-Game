@@ -76,23 +76,27 @@
             /* Default: 4x4 (Medium) */
             grid-template-columns: repeat(4, 1fr);
             grid-gap: 0.75rem; 
+            max-width: 480px; /* FIX: Set a max width for standard grid */
+            width: 95%; /* FIX: Ensure it takes most of the available space */
         }
         
         /* Small Screens: Adjust default card font size */
         .card-face {
-            font-size: 2rem; /* Reduced from 2.5rem for better fit on small cards */
+            font-size: 2rem; 
         }
         
         /* Easy Mode (3x4) */
         .card-grid.easy {
             grid-template-columns: repeat(3, 1fr);
-            max-width: 300px; /* Adjusted max-width for 3-column layout */
+            max-width: 300px; 
         }
         
         /* Hard Mode (6x6) */
         .card-grid.hard {
             grid-template-columns: repeat(6, 1fr);
             grid-gap: 0.35rem; /* Reduced gap for 6-column layout */
+            max-width: 768px; /* FIX: Allow a much wider grid on larger screens */
+            width: 98%; /* FIX: Ensure it uses almost all container space */
         }
 
         /* Responsive font size for Hard mode */
@@ -100,6 +104,12 @@
             font-size: 1.25rem; /* Much smaller font for 6x6 grid */
         }
 
+        /* FIX: Allow the main container to stretch for hard mode on screens >= 768px */
+        @media (min-width: 768px) {
+            .game-container-hard {
+                max-width: 900px !important; /* Allow the game wrapper to expand */
+            }
+        }
         /* Card flip styles (No Change) */
         .card-container {
             perspective: 1000px;
@@ -182,6 +192,10 @@
             <button id="restart-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 sm:py-3 sm:px-6 rounded-lg transition duration-200 transform hover:scale-[1.03] shadow-lg shadow-indigo-500/50 text-base sm:text-lg">
                 Restart Game
             </button>
+
+               <p class="text-sm text-gray-400 mt-4">
+                Game Developed by: Erika Babanto, Edralyn Paulo, and Rachel Balmes 
+            </p>
         </div>
 
     </div>
@@ -406,18 +420,14 @@
         cardGrid.classList.remove('easy', 'medium', 'hard');
         cardGrid.classList.add(currentDifficulty);
         
-        // **RESPONSIVE IMPROVEMENT:** Adjust the container max width for the hardest level
+        // **RESPONSIVE FIX:** Add/Remove a class to let the main container stretch when needed
+        // This class is handled by the new CSS media query.
         if (currentDifficulty === 'hard') {
-             // Use a larger max width for 6x6 on larger screens, but keep it responsive
-             gameContainer.classList.remove('max-w-lg');
-             // Tailwind default 'lg' breakpoint is 1024px, 'xl' is 1280px. max-w-4xl is better for large grids.
-             gameContainer.classList.add('max-w-4xl'); 
-             // Also ensure it takes full width up to this limit
-             gameContainer.style.maxWidth = 'calc(100vw - 1rem)'; // ensure it fits the viewport
+             gameContainer.classList.remove('max-w-lg'); // Remove default constraint
+             gameContainer.classList.add('game-container-hard');
         } else {
-             gameContainer.classList.remove('max-w-4xl');
-             gameContainer.classList.add('max-w-lg');
-             gameContainer.style.maxWidth = ''; // Clear custom style
+             gameContainer.classList.remove('game-container-hard');
+             gameContainer.classList.add('max-w-lg'); // Restore default constraint
         }
 
 
