@@ -41,7 +41,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 0.5rem; /* Reduced padding for small screens */
+            padding: 0.5rem; 
             font-family: sans-serif;
             color: white;
             overflow: hidden;
@@ -76,8 +76,8 @@
             /* Default: 4x4 (Medium) */
             grid-template-columns: repeat(4, 1fr);
             grid-gap: 0.75rem; 
-            max-width: 480px; /* FIX: Set a max width for standard grid */
-            width: 95%; /* FIX: Ensure it takes most of the available space */
+            max-width: 480px; 
+            width: 95%; 
         }
         
         /* Small Screens: Adjust default card font size */
@@ -94,20 +94,23 @@
         /* Hard Mode (6x6) */
         .card-grid.hard {
             grid-template-columns: repeat(6, 1fr);
-            grid-gap: 0.35rem; /* Reduced gap for 6-column layout */
-            max-width: 768px; /* FIX: Allow a much wider grid on larger screens */
-            width: 98%; /* FIX: Ensure it uses almost all container space */
+            grid-gap: 0.35rem; 
+            /* MODIFIED: Reduced max width for better fit on laptops */
+            max-width: 720px; 
+            width: 98%; 
         }
 
         /* Responsive font size for Hard mode */
         .card-grid.hard .card-face {
-            font-size: 1.25rem; /* Much smaller font for 6x6 grid */
+            /* MODIFIED: Slightly increased font size for readability */
+            font-size: 1.35rem; 
         }
 
-        /* FIX: Allow the main container to stretch for hard mode on screens >= 768px */
+        /* MODIFIED: Allow the main container to expand less aggressively */
         @media (min-width: 768px) {
             .game-container-hard {
-                max-width: 900px !important; /* Allow the game wrapper to expand */
+                /* Reduced max width from 900px to 800px */
+                max-width: 800px !important; 
             }
         }
         /* Card flip styles (No Change) */
@@ -194,7 +197,7 @@
             </button>
 
                <p class="text-sm text-gray-400 mt-4">
-                Game Developed by: Erika Babanto, Edralyn Paulo, and Rachel Balmes 
+                Game Developed by:** Erika Babanto, Edralyn Paulo, and Rachel Balmes 
             </p>
         </div>
 
